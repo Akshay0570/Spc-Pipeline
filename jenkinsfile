@@ -1,0 +1,52 @@
+pipeline {
+    agent { label 'java' }
+    // triggers { cron('0 */2 * * *') }
+    stages{
+        stage('source code management'){
+            steps{
+                 git url: 'https://github.com/Akshay0570/spring-framework-petclinic.git', 
+                    branch:'master'
+            }  
+        }
+        // stage('maven build'){
+        //    steps{
+        //        sh 'mvn clean package'
+        //     }
+        // }
+     //  stage('Build the Code and sonarqube-analysis') {
+       //     steps {
+         //       withSonarQubeEnv('Sonarqube') {
+           //         sh script: "mvn clean package sonar:sonar"
+             //   }
+
+            //}
+        //}
+        stage('Junit test'){
+            steps{
+                junit '**/surefire-reports/*.xml'
+                archiveArtifacts artifacts: 'target/*.war', followSymlinks: false
+            }
+        }
+        stage('Artifactory-Deployer') {
+            steps {
+                rtMavenDeployer (
+                    id: 'Spc',
+                    serverId: 'Jfrog',
+                    releaseRepo: 'maven-libs-release-local',
+                    snapshotRepo: 'maven-libs-snapshot-local',
+                    deployArtifacts: true
+                )
+            }
+        }
+         stage('Maven Run'){
+            steps{
+                rtMavenRun(
+                    tool: 'Apache Maven 3.6.3',
+                    pom: 'pom.xml',
+                    goals: 'clean install package',
+                    deployerId: "Spc",                    
+                )
+            }
+        }
+    }
+}
